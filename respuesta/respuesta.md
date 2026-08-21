@@ -67,3 +67,108 @@
   
 ---
 
+## 2) Migración a persistencia en PostgreSQL
+
+- Para esto creamos el archivo de `compose.yaml` de esta forma:
+
+```yaml
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: LAB4_ARSW-POSTGRES
+    environment:
+      POSTGRES_DB: lab4_arsw
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: chefai?
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_storage:/var/lib/postgresql/data
+volumes: 
+  postgres_storage:
+```
+
+**Nota**: Al ser una base de datos local, no hay problema con dar la clave en él `compose.yaml`, sin embargo, en un ambiente real no es lo esperado.
+
+Y también él `init.sql` con el siguiente contenido:
+
+```sql
+CREATE TABLE IF NOT EXISTS blueprints (
+    author VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    PRIMARY KEY (author, name)
+);
+
+CREATE TABLE IF NOT EXISTS points(
+    id SERIAL PRIMARY KEY,
+    author VARCHAR(100) NOT NULL,
+    blueprint_name VARCHAR(100) NOT NULL,
+    x INT NOT NULL,
+    y INT NOT NULL,
+    point_order INT NOT NULL,
+    FOREIGN KEY (author, blueprint_name) REFERENCES blueprints(author, name) ON DELETE CASCADE
+);
+```
+
+##### También se debe modificar él `pom.xml`, le agregamos lo siguiente: 
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-jdbc</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.postgresql</groupId>
+    <artifactId>postgresql</artifactId>
+    <scope>runtime</scope>
+</dependency>
+```
+
+##### Se debe modificar el archivo `application.yaml` con lo siguiente:
+
+```yaml 
+spring:
+  application:
+    name: SpringBoot_REST_API_Blueprints
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+  datasource:
+    url: jdbc:postgresql://localhost:5432/lab4_arsw
+    username: postgres
+    password: chefai?
+    driver-class-name: org.postgresql.Driver
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+```
+
+#### Finalmente, para ejecutarlo, ejecutamos: 
+
+1. Levantar los servicios en segundo plano:
+
+   ```bash
+   docker compose up -d
+   ```
+
+2. Verificar que los contenedores estén ejecutándose:
+
+   ```bash
+   docker ps
+   ```
+3. Parar el contenedor:
+
+   ```bash
+   docker compose stop 
+   ```
+##### Debería salir de la siguiente forma: 
+
+###### Docker corriendo:
+
+![Docker corriendo](../img/docker-init.png)
+
+###### Docker parado: 
+
+![Docker parado](../img/docker-stop.png)
+

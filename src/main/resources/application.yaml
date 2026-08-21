@@ -1,1 +1,15 @@
-spring.mvc.pathmatch.matching-strategy=ant_path_matcher
+spring:
+  application:
+    name: SpringBoot_REST_API_Blueprints
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+  datasource:
+    url: jdbc:postgresql://localhost:5432/lab4_arsw
+    username: postgres
+    password: chefai?
+    driver-class-name: org.postgresql.Driver
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

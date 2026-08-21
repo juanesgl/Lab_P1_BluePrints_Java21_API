@@ -1,6 +1,19 @@
 ## Laboratorio #4 – REST API Blueprints (Java 21 / Spring Boot 3.3.x)
 # Escuela Colombiana de Ingeniería – Arquitecturas de Software  
 
+
+
+### Integrantes del equipo:
+
+| Nombre                                                     | Rol        |
+|------------------------------------------------------------|------------|
+| [Juan David Valero Abril](https://github.com/Valero25)     | Estudiante |
+| [Juan Esteban Sanchez Garcia](https://github.com/juanesgl) | Estudiante |
+
+### Respuestas del laboratorio
+
+[Mini-doc conteniendo respuestas al lab](respuesta.md)
+
 ---
 
 ## 📋 Requisitos

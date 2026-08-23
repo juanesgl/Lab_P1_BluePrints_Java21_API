@@ -48,8 +48,7 @@ Abrir en navegador:
 ```
 src/main/java/edu/eci/arsw/blueprints
   ├── model/         # Entidades de dominio: Blueprint, Point
-  ├── persistence/   # Interfaz + repositorios (InMemory, Postgres)
-  │    └── impl/     # Implementaciones concretas
+  ├── persistence/   # Interfaz BlueprintPersistence + implementación (Postgres)
   ├── services/      # Lógica de negocio y orquestación
   ├── filters/       # Filtros de procesamiento (Identity, Redundancy, Undersampling)
   ├── controllers/   # REST Controllers (BlueprintsAPIController)
@@ -69,7 +68,7 @@ src/main/java/edu/eci/arsw/blueprints
 
 ### 2. Migración a persistencia en PostgreSQL
 - Configura una base de datos PostgreSQL (puedes usar Docker).  
-- Implementa un nuevo repositorio `PostgresBlueprintPersistence` que reemplace la versión en memoria.  
+- Implementa un nuevo repositorio `PostgresBluePrintPersistence` que reemplace la versión en memoria.  
 - Mantén el contrato de la interfaz `BlueprintPersistence`.  
 
 ### 3. Buenas prácticas de API REST

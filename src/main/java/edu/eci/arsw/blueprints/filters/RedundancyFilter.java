@@ -22,7 +22,7 @@ public class RedundancyFilter implements BlueprintsFilter {
         List<Point> out = new ArrayList<>();
         Point prev = null;
         for (Point p : in) {
-            if (prev == null || !(prev.x()==p.x() && prev.y()==p.y())) {
+            if (prev == null || !(prev.getX() == p.getX() && prev.getY() == p.getY())) {
                 out.add(p);
                 prev = p;
             }

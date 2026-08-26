@@ -174,5 +174,5 @@ springdoc:
 
 ### Implementación de `PostgresBluePrintPersistence`:
 
-- 
+- Para esto lo que decidimos hacer fue crear 
 

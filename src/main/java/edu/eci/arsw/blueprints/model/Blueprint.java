@@ -1,18 +1,12 @@
 package edu.eci.arsw.blueprints.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-@Getter
-@Setter
-@NoArgsConstructor
 @Entity
 @Table(name = "blueprints")
 @IdClass(BlueprintPK.class)
@@ -35,12 +29,36 @@ public class Blueprint {
     @OrderColumn(name = "point_order")
     private List<Point> points = new ArrayList<>();
 
+    public Blueprint() {
+    }
+
     public Blueprint(String author, String name, List<Point> pts) {
         this.author = author;
         this.name = name;
         if (pts != null) {
             this.points.addAll(pts);
         }
+    }
+
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(String author) {
+        this.author = author;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setPoints(List<Point> points) {
+        this.points = points;
     }
 
 

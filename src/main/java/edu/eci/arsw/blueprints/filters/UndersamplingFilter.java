@@ -17,11 +17,12 @@ import java.util.List;
 public class UndersamplingFilter implements BlueprintsFilter {
     @Override
     public Blueprint apply(Blueprint bp) {
+        if (bp == null) return null;
         List<Point> in = bp.getPoints();
-        if (in.size() <= 2) return bp;
+        if (in == null || in.isEmpty()) return bp;
         List<Point> out = new ArrayList<>();
-        for (int i = 0; i < in.size(); i++) {
-            if (i % 2 == 0) out.add(in.get(i));
+        for (int i = 0; i < in.size(); i += 2) {
+            out.add(in.get(i));
         }
         return new Blueprint(bp.getAuthor(), bp.getName(), out);
     }

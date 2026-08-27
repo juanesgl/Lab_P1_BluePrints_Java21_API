@@ -30,4 +30,21 @@ public class Point {
     public void setY(int y) { 
         this.y = y; 
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Point point)) return false;
+        return x == point.x && y == point.y;
+    }
+
+    @Override
+    public int hashCode() {
+        return java.util.Objects.hash(x, y);
+    }
+
+    @Override
+    public String toString() {
+        return "Point{" + "x=" + x + ", y=" + y + '}';
+    }
 }

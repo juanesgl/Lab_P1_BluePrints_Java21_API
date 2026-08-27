@@ -17,8 +17,9 @@ import java.util.List;
 public class RedundancyFilter implements BlueprintsFilter {
     @Override
     public Blueprint apply(Blueprint bp) {
+        if (bp == null) return null;
         List<Point> in = bp.getPoints();
-        if (in.isEmpty()) return bp;
+        if (in == null || in.isEmpty()) return bp;
         List<Point> out = new ArrayList<>();
         Point prev = null;
         for (Point p : in) {

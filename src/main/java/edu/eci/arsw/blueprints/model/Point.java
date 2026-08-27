@@ -1,6 +1,7 @@
 package edu.eci.arsw.blueprints.model;
 
 import jakarta.persistence.Embeddable;
+import java.util.Objects;
 
 @Embeddable
 public class Point {
@@ -29,5 +30,22 @@ public class Point {
     
     public void setY(int y) { 
         this.y = y; 
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Point point)) return false;
+        return x == point.x && y == point.y;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(x, y);
+    }
+
+    @Override
+    public String toString() {
+        return "Point[x=" + x + ", y=" + y + "]";
     }
 }

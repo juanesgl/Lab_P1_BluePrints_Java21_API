@@ -1,6 +1,7 @@
 package edu.eci.arsw.blueprints.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,16 +14,18 @@ import java.util.Objects;
 public class Blueprint {
 
     @Id
+    @NotBlank(message = "Author is required")
     private String author;
 
     @Id
+    @NotBlank(message = "Name is required")
     private String name;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
             name = "points",
             joinColumns = {
-                    @JoinColumn(name = "blueprint_author", referencedColumnName = "author"),
+                    @JoinColumn(name = "author", referencedColumnName = "author"),
                     @JoinColumn(name = "blueprint_name", referencedColumnName = "name")
             }
     )
@@ -39,7 +42,6 @@ public class Blueprint {
             this.points.addAll(pts);
         }
     }
-
 
     public String getAuthor() {
         return author;
@@ -58,9 +60,8 @@ public class Blueprint {
     }
 
     public void setPoints(List<Point> points) {
-        this.points = points;
+        this.points = points != null ? new ArrayList<>(points) : new ArrayList<>();
     }
-
 
     public List<Point> getPoints() { 
         return Collections.unmodifiableList(points); 

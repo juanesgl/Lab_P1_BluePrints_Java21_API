@@ -174,5 +174,114 @@ springdoc:
 
 ### Implementación de `PostgresBluePrintPersistence`:
 
-- Para esto lo que decidimos hacer fue crear 
+- Para esto lo que decidimos hacer fue crear un nuevo repositorio Spring Data JPA, `BlueprintJpaRepository`, que extiende de `JpaRepository<Blueprint, BlueprintPK>` y añade el método derivado `findByAuthor(String author)` para consultar todos los planos de un autor.
+
+- Para que Spring Data pudiera gestionar `Blueprint` como entidad, la convertimos en una entidad JPA:
+  - Se anotó con `@Entity` y `@Table(name = "blueprints")`.
+  - Como la clave primaria es compuesta (`author` + `name`), se usó `@IdClass(BlueprintPK.class)`, marcando ambos campos con `@Id`. `BlueprintPK` es una clase auxiliar que implementa `equals`/`hashCode` sobre esos dos campos, tal como lo exige JPA para claves compuestas.
+  - La lista de `points` se mapeó como una colección de elementos embebidos con `@ElementCollection(fetch = FetchType.EAGER)`, `@CollectionTable(name = "points", ...)` (uniendo por `author` y `name` del blueprint) y `@OrderColumn(name = "point_order")` para conservar el orden de inserción de los puntos, ya que por defecto una colección JPA no garantiza orden.
+
+- Con la entidad lista, `PostgresBlueprintPersistence` implementa la misma interfaz `BlueprintPersistence` que usaba la versión en memoria (manteniendo el contrato), delegando cada operación al `BlueprintJpaRepository`:
+  - `saveBlueprint`: primero verifica con `existsById` si ya existe un plano con esa clave, y si es así lanza `BlueprintPersistenceException`; si no, lo guarda con `repository.save(bp)`.
+  - `getBlueprint`: usa `findById` con el `BlueprintPK` y lanza `BlueprintNotFoundException` si no lo encuentra (`orElseThrow`).
+  - `getBlueprintsByAuthor`: usa el método derivado `findByAuthor`, lanzando `BlueprintNotFoundException` si la lista viene vacía.
+  - `getAllBlueprints`: retorna `repository.findAll()` convertido a `Set`.
+  - `addPoint`: recupera el blueprint, le agrega el punto en memoria con `addPoint(new Point(x, y))` y vuelve a guardarlo; este método está anotado con `@Transactional` para que la lectura y escritura ocurran dentro de la misma transacción.
+
+- La clase se anotó con `@Repository` (para que Spring la registre como bean) y `@Primary`, de modo que sea la implementación que Spring inyecte automáticamente en `BlueprintsServices` en lugar de la antigua `InMemoryBlueprintPersistence`, la cual fue eliminada del proyecto una vez migrada la persistencia a PostgreSQL.
+
+---
+
+## 3) Buenas prácticas de API REST
+
+El enunciado de esta actividad pedía tres cosas sobre `BlueprintsAPIController`:
+
+1. Cambiar el path base de `/blueprints` a `/api/v1/blueprints` (versionamiento de la API).
+2. Usar consistentemente los códigos HTTP correctos (`200`, `201`, `202`, `400`, `404`).
+3. Envolver todas las respuestas en un record genérico y uniforme: `public record ApiResponse<T>(int code, String message, T data) {}`.
+
+**Estado actual: parcialmente cubierto, con trabajo pendiente.**
+
+- Los códigos HTTP sí se usan de forma correcta por endpoint: `200 OK` en las consultas (`GET /blueprints`, `GET /blueprints/{author}`, `GET /blueprints/{author}/{bpname}`), `201 Created` al registrar un plano nuevo (`POST /blueprints`), `202 Accepted` al agregar un punto (`PUT /blueprints/{author}/{bpname}/points`) y `404 Not Found` cuando el autor o el plano no existen. El único código que no coincide exactamente con lo pedido es que, ante un conflicto de persistencia (plano duplicado), el controlador responde `403 Forbidden` en vez de `400 Bad Request`.
+- **No se implementó** el versionamiento del path: el controlador sigue anotado con `@RequestMapping("/blueprints")`, no `/api/v1/blueprints`.
+- **No se implementó** el record `ApiResponse<T>`: los errores se devuelven como un `Map.of("error", mensaje)` suelto (por ejemplo, `ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()))`), y las respuestas exitosas devuelven directamente el objeto de dominio (`Blueprint`, `Set<Blueprint>`) sin envolverlo en una estructura uniforme `{ code, message, data }`.
+
+Esto queda identificado como pendiente para una siguiente iteración del laboratorio.
+
+---
+
+## 4) OpenAPI / Swagger
+
+- Se agregó al `pom.xml` la dependencia `springdoc-openapi-starter-webmvc-ui`, que expone automáticamente la documentación OpenAPI generada a partir de las anotaciones de Spring MVC.
+
+- Se creó la clase de configuración `OpenApiConfig`, anotada con `@Configuration`, que define un bean `OpenAPI` con metadatos generales de la API (título `"ARSW Blueprints API"`, versión `"v1"` y una descripción del laboratorio):
+
+  ```java
+  @Bean
+  public OpenAPI api() {
+      return new OpenAPI().info(new Info()
+              .title("ARSW Blueprints API")
+              .version("v1")
+              .description("Blueprints Laboratory (Java 21 / Spring Boot 3.3.x)"));
+  }
+  ```
+
+- Cada endpoint de `BlueprintsAPIController` se documentó con anotaciones de `springdoc`:
+  - `@Operation(summary = ..., description = ...)` para describir el propósito de cada operación.
+  - `@ApiResponse`/`@ApiResponses` para documentar los posibles códigos de respuesta de cada endpoint (por ejemplo, `200` y `404` en las consultas; `201`, `403` y `400` en la creación; `202` y `404` al agregar un punto).
+  - La clase del controlador también se anotó con `@Tag(name = "Blueprints", description = ...)` para agrupar sus endpoints en Swagger UI bajo una misma sección.
+
+- Con esto, al levantar la aplicación la documentación queda disponible en `http://localhost:8080/swagger-ui.html` (interfaz interactiva) y en `http://localhost:8080/v3/api-docs` (especificación OpenAPI en JSON), tal como se indica en el README del proyecto.
+
+---
+
+## 5) Filtros de Blueprints
+
+Esta parte introduce una estrategia de procesamiento de puntos que se aplica al consultar un plano (`BlueprintsServices.getBlueprint`), seleccionable dinámicamente según el perfil de Spring activo.
+
+- **`BlueprintsFilter`**: interfaz funcional que define el contrato `Blueprint apply(Blueprint bp)`. `BlueprintsServices` depende de esta interfaz (no de una implementación concreta), por lo que Spring inyecta la implementación correspondiente al perfil activo mediante `@Profile`.
+
+- **`IdentityFilter`** (`@Profile("default")`): implementación por defecto, activa cuando no se especifica ningún perfil de filtro. Simplemente retorna el blueprint recibido sin modificarlo.
+
+- **`RedundancyFilter`** (`@Profile("redundancy")`): elimina puntos consecutivos duplicados. Recorre la lista de puntos comparando cada punto con el anterior (`prev`); si tienen las mismas coordenadas `(x, y)`, el punto se descarta, y si son distintas se agrega a la lista de salida. El resultado es un nuevo `Blueprint` con la lista filtrada, sin mutar el original.
+
+- **`UndersamplingFilter`** (`@Profile("undersampling")`): reduce la densidad de puntos conservando únicamente los de índice par (uno de cada dos), recorriendo la lista con paso `i += 2`. Al igual que el anterior, retorna un nuevo `Blueprint` con los puntos resultantes.
+
+- **Activación por perfiles de Spring**: cada filtro es un `@Component` anotado con `@Profile`, de modo que basta con levantar la aplicación con `-Dspring.profiles.active=redundancy` o `-Dspring.profiles.active=undersampling` (o dejarlo sin perfil para obtener `IdentityFilter`) para cambiar el comportamiento de filtrado sin tocar código.
+
+- **Pruebas**:
+  - `FilterProfilesIntegrationTest`: prueba de integración con `@SpringBootTest` y `@ActiveProfiles`, que verifica que Spring inyecta la implementación correcta de `BlueprintsFilter` según el perfil activo (`RedundancyFilter`, `UndersamplingFilter` o `IdentityFilter` por defecto).
+  - `RedundancyFilterTest` y `UndersamplingFilterTest`: pruebas unitarias que verifican directamente la lógica de cada filtro (eliminación de duplicados consecutivos y conservación de puntos pares, respectivamente), sin necesidad de levantar el contexto de Spring.
+
+### Cómo activar los filtros
+
+Existen tres formas equivalentes de activar un perfil de Spring (y con ello, el filtro correspondiente) al ejecutar la aplicación:
+
+1. **Desde línea de comandos**, al ejecutar la aplicación con Maven:
+
+   ```bash
+   # Activar filtro de redundancia
+   mvn spring-boot:run -Dspring-boot.run.profiles=redundancy
+
+   # Activar filtro de submuestreo
+   mvn spring-boot:run -Dspring-boot.run.profiles=undersampling
+   ```
+
+2. **Mediante variable de entorno**:
+
+   ```bash
+   export SPRING_PROFILES_ACTIVE=redundancy
+   # o
+   export SPRING_PROFILES_ACTIVE=undersampling
+   ```
+
+3. **En `application.yaml`**, fijando el perfil por defecto:
+
+   ```yaml
+   spring:
+     profiles:
+       active: redundancy  # o undersampling
+   ```
+
+Si no se activa ningún perfil (como está configurado actualmente en `application.yaml`), Spring inyecta `IdentityFilter` por defecto y los planos se devuelven sin ningún filtrado adicional.
 

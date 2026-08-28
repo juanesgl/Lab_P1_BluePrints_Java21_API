@@ -12,7 +12,7 @@
 
 ### Respuestas del laboratorio
 
-[Mini-doc conteniendo respuestas al lab](respuesta.md)
+[Mini-doc conteniendo respuestas al lab](respuesta/respuesta.md)
 
 ---
 
